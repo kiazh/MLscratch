@@ -24,7 +24,7 @@ float prng_random_norm(void);
 
 int main(void) {
     for (uint32_t i = 0; i < 10; i++) {
-        printf("%f\n", prng_randf());
+        printf("%f\n", prng_rand_norm());
     }
     return 0; 
 }
@@ -91,5 +91,7 @@ float prng_rand_norm_r(prng_state* rng) {
     rng->prev_norm = z1; 
     return z0; 
 }
-float prng_random_norm(void);
+float prng_random_norm(void) {
+    return prng_rand_norm_r(&s_prng_state);
+}
 
