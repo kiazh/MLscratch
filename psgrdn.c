@@ -2,6 +2,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <math.h>
+#include <sys/random.h>
+
+static int plat_get_entropy(void* buf, size_t len) {
+    return getentropy(buf, len); // returns 0 on success, -1 on error
+}
 #define PI 3.14159265358979
 typedef struct {
     uint64_t state;
@@ -16,15 +21,21 @@ uint32_t prng_rand_r(prng_state* rng);
 uint32_t prng_rand(void);
 float prng_randf_r(prng_state* rng);
 float prng_randf(void);
-
 float prng_rand_norm_r(prng_state* rng);
 float prng_rand_norm(void);
 
 
 
+
 int main(void) {
+    uint64_t seeds[2] = {0};
+    plat_get_entropy(seeds, sizeof(seeds));
+
+    prng_state rng = { };
+    prng_seed_r(&rng, seeds[0], seeds[1]);
+
     for (uint32_t i = 0; i < 10; i++) {
-        printf("%f\n", prng_rand_norm());
+        printf("%f\n", prng_rand_norm_r(&rng));
     }
     return 0; 
 }
@@ -94,4 +105,3 @@ float prng_rand_norm_r(prng_state* rng) {
 float prng_rand_norm(void) {
     return prng_rand_norm_r(&s_prng_state);
 }
-
