@@ -53,6 +53,8 @@ void prng_seed_r(prng_state* rng , uint64_t initstate, uint64_t initseq) {
     prng_rand_r(rng);
     rng->state += initstate;
     prng_rand_r(rng);
+
+    rng->prev_norm = NAN;
 }
 
 void prng_seed(uint64_t initstate, uint64_t initseq) {
