@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-
+#include <math.h>
+#define PI 3.14159265358979
 typedef struct {
     uint64_t state;
     uint64_t inc;
@@ -69,6 +70,26 @@ float prng_randf(void) {
    return prng_randf_r(&s_prng_state);
 }
 
-float prng_rand_norm_r(prng_state* rng);
+float prng_rand_norm_r(prng_state* rng) {
+    if (!isnan(rng->prev_norm)) {
+        float out = rng->prev_norm;
+        rng->prev_norm = NAN;
+        return out;
+    }
+    float u1 = 0.0f, u2 = 0.0f;
+    do {
+        u1 = prng_randf_r(rng);
+    } while (u1 ==0.0f); 
+
+    float u2 = prng_randf_r(rng);
+
+    float mag = sqrtf(-2.0f * logf(u1));
+
+    float z0 = mag * cosf(2.0f * PI * u2);
+    float z1 = mag * sinf(2.0f * PI * u2); 
+
+    rng->prev_norm = z1; 
+    return z0; 
+}
 float prng_random_norm(void);
 
