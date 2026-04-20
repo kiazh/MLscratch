@@ -18,7 +18,7 @@ float prng_randf_r(prng_state* rng);
 float prng_randf(void);
 
 float prng_rand_norm_r(prng_state* rng);
-float prng_random_norm(void);
+float prng_rand_norm(void);
 
 
 
@@ -33,7 +33,7 @@ int main(void) {
 
 // Default state
 static prng_state s_prng_state = {
-    0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL
+    0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL, NAN
 };
 
 void prng_seed_r(prng_state* rng , uint64_t initstate, uint64_t initseq) {
@@ -76,7 +76,7 @@ float prng_rand_norm_r(prng_state* rng) {
         rng->prev_norm = NAN;
         return out;
     }
-    float u1 = 0.0f, u2 = 0.0f;
+    float u1 = 0.0f;
     do {
         u1 = prng_randf_r(rng);
     } while (u1 ==0.0f); 
@@ -91,7 +91,7 @@ float prng_rand_norm_r(prng_state* rng) {
     rng->prev_norm = z1; 
     return z0; 
 }
-float prng_random_norm(void) {
+float prng_rand_norm(void) {
     return prng_rand_norm_r(&s_prng_state);
 }
 
