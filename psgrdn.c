@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <sys/random.h>
 #include "psgrdn.h"
 

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "arena.h"
 
 
@@ -102,7 +103,7 @@ int32_t plat_mem_release(void* ptr, uint64_t size) {
 }
 
 
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__APPLE__)
 
 #define _DEFAULT_SOURCE
 

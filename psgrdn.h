@@ -2,9 +2,8 @@
 #define PSGRDN_H
 
 #include <stdint.h>
-#include <math.h>
 
-#define PI 3.14159265358979
+#define PI 3.14159265358979f
 
 typedef struct {
     uint64_t state;

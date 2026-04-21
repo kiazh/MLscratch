@@ -2,16 +2,27 @@
 #define ARENA_H
 
 #include <stdint.h>
-#include <string.h>
 #include <stdbool.h>
 
+#ifndef KiB
 #define KiB(n) ((uint64_t)(n) << 10)
+#endif
+#ifndef MiB
 #define MiB(n) ((uint64_t)(n) << 20)
+#endif
+#ifndef GiB
 #define GiB(n) ((uint64_t)(n) << 30)
+#endif
 
+#ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef ALIGN_UP_POW2
 #define ALIGN_UP_POW2(n, p) (((uint64_t)(n) + ((uint64_t)(p) - 1)) & (~((uint64_t)(p) - 1)))
+#endif
 
 #define ARENA_BASE_POS (sizeof(mem_arena))
 #define ARENA_ALIGN (sizeof(void*))
