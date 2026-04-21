@@ -10,18 +10,7 @@ static int plat_get_entropy(void* buf, size_t len) {
 
 
 
-int main(void) {
-    uint64_t seeds[2] = {0};
-    plat_get_entropy(seeds, sizeof(seeds));
 
-    prng_state rng = { };
-    prng_seed_r(&rng, seeds[0], seeds[1]);
-
-    for (uint32_t i = 0; i < 10; i++) {
-        printf("%f\n", prng_rand_norm_r(&rng));
-    }
-    return 0; 
-}
 
 
 
