@@ -39,3 +39,30 @@ int main(void) {
 
     return 0;
 }
+
+
+matrix* mat_create(mem_arena* arena, uint32_t rows, uint32_t cols){
+    matrix* mat = PUSH_STRUCT(arena, matrix);
+
+    mat->rows = rows;
+    mat->cols = cols;
+    mat->data = PUSH_ARRAY(arena, float, rows * cols);
+
+    return mat;
+} 
+
+void mat_clear(matrix* mat);
+b32 mat_copy(matrix* dst, matrix* src);
+void mat_fill(matrix* mat, f32 x);
+void mat_scale(matrix* mat, f32 scale);
+b32 mat_add(matrix* out, const matrix* a, const matrix* b);
+b32 mat_sub(matrix* out, const matrix* a, const matrix* b);
+b32 mat_mul(
+    matrix* out, const matrix* a, const matrix* b,
+    b8 zero_out, b8 tranpose_a, b8 transpose_b
+);
+b32 mat_relu(matrix* out, const matrix* in);
+b32 mat_softmax(matrix* out, const matrix* in);
+b32 mat_cross_entropy_loss(matrix* out, const matrix* p, const matrix* q);
+b32 mat_softmax_add_grad(matrix* out, const matrix* softmax_out);
+b32 mat_cross_entropy_loss_grad(matrix* out, const matrix* p, const matrix* q);
