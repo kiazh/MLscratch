@@ -23,7 +23,7 @@ b32 mat_add(matrix* out, const matrix* a, const matrix* b);
 b32 mat_sub(matrix* out, const matrix* a, const matrix* b);
 b32 mat_mul(
     matrix* out, const matrix* a, const matrix* b,
-    b8 zero_out, b8 tranpose_a, b8 transpose_b
+    b8 zero_out, b8 transpose_a, b8 transpose_b
 );
 f32 mat_sum(const matrix* mat);
 b32 mat_relu(matrix* out, const matrix* in);
@@ -83,13 +83,75 @@ void mat_scale(matrix* mat, f32 scale) {
 
 
 
-f32 mat_sum(const matrix* mat);
-b32 mat_add(matrix* out, const matrix* a, const matrix* b);
-b32 mat_sub(matrix* out, const matrix* a, const matrix* b);
+f32 mat_sum(const matrix* mat){
+    u64 size = (u64)mat->rows * mat->cols;
+    f32 sum = 0.0f;
+    for (u64 i =0; i <size; i++) {
+        sum += mat->data[i];
+    }
+    return sum;
+}
+
+
+b32 mat_add(matrix* out, const matrix* a, const matrix* b){
+    if (a->rows != b->rows || a-> cols != b->cols) {
+        return false;
+    } 
+    if (out->rows != a->rows || out->cols != a->cols) {
+        return false;
+    }
+
+    u64 size = (u64)a->rows * a->cols;
+    for (u64 i = 0; i < size; i++) {
+        out->data[i] = a->data[i] + b->data[i];
+    }
+    return false; 
+}
+
+b32 mat_sub(matrix* out, const matrix* a, const matrix* b){
+    if (a->rows != b->rows || a-> cols != b->cols) {
+        return false;
+    } 
+    if (out->rows != a->rows || out->cols != a->cols) {
+        return false;
+    }
+
+    u64 size = (u64)a->rows * a->cols;
+    for (u64 i = 0; i < size; i++) {
+        out->data[i] = a->data[i] - b->data[i];
+    }
+    return false; 
+}
+
+void _mat_mul_nn(matrix* out, const matrix* a, const matrix* b) {}
+void _mat_mul_nt(matrix* out, const matrix* a, const matrix* b) {}
+void _mat_mul_tn(matrix* out, const matrix* a, const matrix* b) {}
+void _mat_mul_tt(matrix* out, const matrix* a, const matrix* b) {}
+
+
 b32 mat_mul(
     matrix* out, const matrix* a, const matrix* b,
-    b8 zero_out, b8 tranpose_a, b8 transpose_b
-);
+    b8 zero_out, b8 transpose_a, b8 transpose_b
+){
+    u32 a_rows = transpose_a ? a->cols : a->rows;
+    u32 a_cols = transpose_a ? a->rows : a->cols;
+    u32 b_rows = transpose_b ? b->cols : b->rows;
+    u32 b_cols = transpose_b ? b->rows : b->cols;
+
+    if (a_cols != b_rows) {
+        return false;
+    }
+    if (out->rows != a_rows || out->cols != b_cols) {
+        return false;
+    }
+    if(zero_out) {
+        mat_clear(out);
+    } 
+    return true; 
+}
+
+
+
 b32 mat_relu(matrix* out, const matrix* in);
 b32 mat_softmax(matrix* out, const matrix* in);
 b32 mat_cross_entropy_loss(matrix* out, const matrix* p, const matrix* q);
