@@ -15,6 +15,7 @@ typedef struct{
 } matrix;
 
 matrix *mat_create(mem_arena *arena, uint32_t rows, uint32_t cols);
+matrix* mat_load(mem_arena* arena, u32 rows,u32 cols, const char* filename);
 void mat_clear(matrix *mat);
 b32 mat_copy(matrix *dst, matrix *src);
 void mat_fill(matrix *mat, f32 x);
@@ -32,9 +33,14 @@ b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out);
 b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
 
 int main(void){
-    mem_arena *pern_arena = arena_create(GiB(1), MiB(1));
+    mem_arena *perm_arena = arena_create(GiB(1), MiB(1));
 
-    arena_destroy(pern_arena);
+    matrix* train_images  = mat_load(perm_arena, 60000, 784, "data/train_images.npy");
+    matrix* train_labels  = mat_load(perm_arena, 60000,   1, "data/train_labels.npy");
+    matrix* test_images   = mat_load(perm_arena, 10000, 784, "data/test_images.npy");
+    matrix* test_labels   = mat_load(perm_arena, 10000,   1, "data/test_labels.npy");
+
+    arena_destroy(perm_arena);
 
     return 0;
 }
@@ -45,6 +51,37 @@ matrix *mat_create(mem_arena *arena, uint32_t rows, uint32_t cols){
     mat->rows = rows;
     mat->cols = cols;
     mat->data = PUSH_ARRAY(arena, float, rows *cols);
+
+    return mat;
+}
+
+static void npy_skip_header(FILE *f) {
+    u8 buf[8];
+    fread(buf, 1, 8, f); // magic(6) + major(1) + minor(1)
+    u32 header_len;
+    if (buf[6] == 1) {
+        u16 hlen; fread(&hlen, 2, 1, f); header_len = hlen;
+    } else {
+        fread(&header_len, 4, 1, f);
+    }
+    fseek(f, header_len, SEEK_CUR);
+}
+
+matrix* mat_load(mem_arena* arena, u32 rows, u32 cols, const char* filename){
+    matrix* mat = mat_create(arena, rows, cols);
+
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "mat_load: could not open '%s'\n", filename);
+        return NULL;
+    }
+
+    npy_skip_header(f);
+
+    u64 size = sizeof(f32) * rows * cols;
+    fread(mat->data, 1, size, f);
+
+    fclose(f);
 
     return mat;
 }
@@ -217,15 +254,27 @@ b32 mat_softmax(matrix *out, const matrix *in){
         return false;
     }
 
-    u64 size = (u64)out->rows * out->cols;
-    f32 sum = 0.0f; 
-    for (u64 i = 0; i < size; i++){
-        out->data[i] = expf(in->data[i]);
-        sum += out->data[i];
+    for (u32 r = 0; r < in->rows; r++){
+        f32 *in_row  = in->data  + r * in->cols;
+        f32 *out_row = out->data + r * out->cols;
+
+        f32 max_val = in_row[0];
+        for (u32 c = 1; c < in->cols; c++){
+            if (in_row[c] > max_val) max_val = in_row[c];
+        }
+
+        f32 sum = 0.0f;
+        for (u32 c = 0; c < in->cols; c++){
+            out_row[c] = expf(in_row[c] - max_val);
+            sum += out_row[c];
+        }
+
+        f32 inv_sum = 1.0f / sum;
+        for (u32 c = 0; c < out->cols; c++){
+            out_row[c] *= inv_sum;
+        }
     }
 
-    mat_scale(out, 1.0f / sum);
-    
     return true;
 }
 
@@ -247,5 +296,28 @@ b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q){
 
 }
 
-b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out);
-b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
+b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out){
+    if (out->rows != softmax_out->rows || out->cols != softmax_out->cols){
+        return false;
+    }
+    u64 size = (u64)out->rows * out->cols;
+    for (u64 i = 0; i < size; i++){
+        f32 s = softmax_out->data[i];
+        out->data[i] += s * (1.0f - s);
+    }
+    return true;
+}
+
+b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q){
+    if (p->rows != q->rows || p->cols != q->cols){
+        return false;
+    }
+    if (out->rows != p->rows || out->cols != p->cols){
+        return false;
+    }
+    u64 size = (u64)out->rows * out->cols;
+    for (u64 i = 0; i < size; i++){
+        out->data[i] = -p->data[i] / (q->data[i] + 1e-7f);
+    }
+    return true;
+}
