@@ -9,10 +9,10 @@ test_images = test_images.astype(np.float32) / 255.0
 train_labels = train_labels.astype(np.float32)
 test_labels = test_labels.astype(np.float32)
 
-np.save("train_images.npy", train_images)
-np.save("train_labels.npy", train_labels)
-np.save("test_images.npy", test_images)
-np.save("test_labels.npy", test_labels)
+np.save("data/train_images.npy", train_images)
+np.save("data/train_labels.npy", train_labels)
+np.save("data/test_images.npy", test_images)
+np.save("data/test_labels.npy", test_labels)
 
 print(train_images.shape)
 print(train_labels.shape)

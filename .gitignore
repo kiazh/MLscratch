@@ -1,6 +1,7 @@
 .vscode/
 *.dSYM/
-psgrdn
 .venv/
-*.npy
-main
+data/
+build/
+src/main
+src/psgrdn
