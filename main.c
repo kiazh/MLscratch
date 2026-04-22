@@ -170,7 +170,7 @@ void _mat_mul_tt(matrix *out, const matrix *a, const matrix *b){
 b32 mat_mul(
     matrix *out, const matrix *a, const matrix *b,
     b8 zero_out, b8 transpose_a, b8 transpose_b){
-        
+
     u32 a_rows = transpose_a ? a->cols : a->rows;
     u32 a_cols = transpose_a ? a->rows : a->cols;
     u32 b_rows = transpose_b ? b->cols : b->rows;
@@ -187,6 +187,14 @@ b32 mat_mul(
     if (zero_out)
     {
         mat_clear(out);
+    }
+
+    u32 transpose = (transpose_a << 1) | transpose_b; 
+    switch(transpose) {
+        case 0b00: {_mat_mul_nn(out, a, b); } break;
+        case 0b01: {_mat_mul_nt(out, a, b); } break;
+        case 0b10: {_mat_mul_tn(out, a, b); } break;
+        case 0b11: {_mat_mul_tt(out, a, b); } break;
     }
     return true;
 }
