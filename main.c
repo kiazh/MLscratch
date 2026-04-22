@@ -103,7 +103,7 @@ b32 mat_add(matrix *out, const matrix *a, const matrix *b){
     {
         out->data[i] = a->data[i] + b->data[i];
     }
-    return false;
+    return true;
 }
 
 b32 mat_sub(matrix *out, const matrix *a, const matrix *b){
@@ -118,14 +118,14 @@ b32 mat_sub(matrix *out, const matrix *a, const matrix *b){
     for (u64 i = 0; i < size; i++){
         out->data[i] = a->data[i] - b->data[i];
     }
-    return false;
+    return true;
 }
 
 void _mat_mul_nn(matrix *out, const matrix *a, const matrix *b)
 {
     for (u64 i = 0; i < out->rows; i++){
         for (u64 k = 0; k < a->cols; k++){
-            for (u64 j = 0; i < out->cols; j++){
+            for (u64 j = 0; j < out->cols; j++){
                 out->data[j + i * out->cols] +=
                     a->data[k + i * a->cols] *
                     b->data[j + k * b->cols];
@@ -135,7 +135,7 @@ void _mat_mul_nn(matrix *out, const matrix *a, const matrix *b)
 }
 void _mat_mul_nt(matrix *out, const matrix *a, const matrix *b){
     for (u64 i = 0; i < out->rows; i++){
-        for (u64 j = 0; i < out->cols; j++){
+        for (u64 j = 0; j < out->cols; j++){
             for (u64 k = 0; k < a->cols; k++){
                 out->data[j + i * out->cols] +=
                     a->data[k + i * a->cols] *
@@ -147,7 +147,7 @@ void _mat_mul_nt(matrix *out, const matrix *a, const matrix *b){
 void _mat_mul_tn(matrix *out, const matrix *a, const matrix *b){
     for (u64 k = 0; k < a->rows; k++){
         for (u64 i = 0; i < out->rows; i++){
-            for (u64 j = 0; i < out->cols; j++){
+            for (u64 j = 0; j < out->cols; j++){
                 out->data[j + i * out->cols] +=
                     a->data[i + k * a->cols] *
                     b->data[j + k * b->cols];
@@ -158,7 +158,7 @@ void _mat_mul_tn(matrix *out, const matrix *a, const matrix *b){
 void _mat_mul_tt(matrix *out, const matrix *a, const matrix *b){
     for (u64 i = 0; i < out->rows; i++){
         for (u64 k = 0; k < a->cols; k++){
-            for (u64 j = 0; i < out->cols; j++){
+            for (u64 j = 0; j < out->cols; j++){
                 out->data[j + i * out->cols] +=
                     a->data[i + k * a->cols] *
                     b->data[k + j * b->cols];
@@ -200,7 +200,7 @@ b32 mat_mul(
 }
 
 b32 mat_relu(matrix *out, const matrix *in){
-    if (out->rows != in->rows || out-> cols){
+    if (out->rows != in->rows || out->cols != in->cols){
         return false;
     }
 
@@ -213,7 +213,7 @@ b32 mat_relu(matrix *out, const matrix *in){
 
 
 b32 mat_softmax(matrix *out, const matrix *in){
-    if (out->rows != in->rows || out-> cols){
+    if (out->rows != in->rows || out->cols != in->cols){
         return false;
     }
 
