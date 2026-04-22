@@ -30,7 +30,7 @@ f32 mat_sum(const matrix *mat);
 b32 mat_relu(matrix *out, const matrix *in);
 b32 mat_softmax(matrix *out, const matrix *in);
 b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q);
-b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out);
+b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out, const matrix *labels);
 b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
 
 void draw_mnist_digit(f32* data);
@@ -42,9 +42,25 @@ int main(void){
     matrix* test_images   = mat_load(perm_arena, 10000, 784, "data/test_images.npy");
     matrix* train_labels = mat_create(perm_arena, 60000, 10);
     matrix* test_labels = mat_create(perm_arena, 10000, 10);
+    {
+        matrix* train_labels_file = mat_load(perm_arena, 60000, 1, "data/train_labels.npy");
+        matrix* test_labels_file = mat_load(perm_arena, 10000, 1, "data/test_labels.npy");
 
+        for (u32 i = 0; i < 60000; i++){
+            u32 num = train_labels_file->data[i];
+            train_labels->data[i * 10 + num] = 1.0f;
+        }
+        for (u32 i = 0; i < 10000; i++){
+            u32 num = (u32)test_labels_file->data[i];
+            test_labels->data[i * 10 + num] = 1.0f;
+        }
 
-    draw_mnist_digit(train_images->data);
+         draw_mnist_digit(train_images->data);
+         for (u32 i = 0; i < 10; i++){
+            printf("%.0f ", train_labels->data[i]);
+         }
+         printf("\n");
+    }
 
     arena_destroy(perm_arena);
 
@@ -55,9 +71,10 @@ void draw_mnist_digit(f32* data){
     for (u32 y = 0; y < 28; y++ ){
         for (u32 x = 0; x <28; x++){
             f32 num = data[x + y * 28];
-            u32 col = 232 + (u32)(num * 24);
+            u32 col = 232 + (u32)(num * 23.0f);
             printf("\x1b[48;5;%dm  ", col);
         }
+        printf("\x1b[0m\n");
     }
 }
 
@@ -312,14 +329,16 @@ b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q){
 
 }
 
-b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out){
+b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out, const matrix *labels){
     if (out->rows != softmax_out->rows || out->cols != softmax_out->cols){
+        return false;
+    }
+    if (labels->rows != softmax_out->rows || labels->cols != softmax_out->cols){
         return false;
     }
     u64 size = (u64)out->rows * out->cols;
     for (u64 i = 0; i < size; i++){
-        f32 s = softmax_out->data[i];
-        out->data[i] += s * (1.0f - s);
+        out->data[i] += softmax_out->data[i] - labels->data[i];
     }
     return true;
 }
