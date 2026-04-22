@@ -8,6 +8,7 @@
 #include "arena.c"
 #include "psgrdn.c"
 #include "base.h"
+#define _CRT_SECURE_NO_WARNINGS
 
 typedef struct{
     uint32_t rows, cols;
@@ -32,17 +33,32 @@ b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q);
 b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out);
 b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
 
+void draw_mnist_digit(f32* data);
+
 int main(void){
     mem_arena *perm_arena = arena_create(GiB(1), MiB(1));
 
     matrix* train_images  = mat_load(perm_arena, 60000, 784, "data/train_images.npy");
-    matrix* train_labels  = mat_load(perm_arena, 60000,   1, "data/train_labels.npy");
     matrix* test_images   = mat_load(perm_arena, 10000, 784, "data/test_images.npy");
-    matrix* test_labels   = mat_load(perm_arena, 10000,   1, "data/test_labels.npy");
+    matrix* train_labels = mat_create(perm_arena, 60000, 10);
+    matrix* test_labels = mat_create(perm_arena, 10000, 10);
+
+
+    draw_mnist_digit(train_images->data);
 
     arena_destroy(perm_arena);
 
     return 0;
+}
+
+void draw_mnist_digit(f32* data){
+    for (u32 y = 0; y < 28; y++ ){
+        for (u32 x = 0; x <28; x++){
+            f32 num = data[x + y * 28];
+            u32 col = 232 + (u32)(num * 24);
+            printf("\x1b[48;5;%dm  ", col);
+        }
+    }
 }
 
 matrix *mat_create(mem_arena *arena, uint32_t rows, uint32_t cols){
