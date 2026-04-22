@@ -68,13 +68,13 @@ static void npy_skip_header(FILE *f) {
 }
 
 matrix* mat_load(mem_arena* arena, u32 rows, u32 cols, const char* filename){
-    matrix* mat = mat_create(arena, rows, cols);
-
     FILE* f = fopen(filename, "rb");
     if (!f) {
         fprintf(stderr, "mat_load: could not open '%s'\n", filename);
         return NULL;
     }
+
+    matrix* mat = mat_create(arena, rows, cols);
 
     npy_skip_header(f);
 
@@ -194,7 +194,7 @@ void _mat_mul_tn(matrix *out, const matrix *a, const matrix *b){
 }
 void _mat_mul_tt(matrix *out, const matrix *a, const matrix *b){
     for (u64 i = 0; i < out->rows; i++){
-        for (u64 k = 0; k < a->cols; k++){
+        for (u64 k = 0; k < a->rows; k++){
             for (u64 j = 0; j < out->cols; j++){
                 out->data[j + i * out->cols] +=
                     a->data[i + k * a->cols] *
@@ -288,8 +288,8 @@ b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q){
     }
     u64 size = (u64)out->rows * out->cols;
     for (u64 i = 0; i < size; i++) {
-        out->data[i] = p->data[i] == 0.0f ? 
-        0.0f : p->data[i] * -logf(q->data[i]);
+        out->data[i] = p->data[i] == 0.0f ?
+        0.0f : p->data[i] * -logf(q->data[i] + 1e-7f);
     }
     
     return true;
