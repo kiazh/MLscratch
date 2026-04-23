@@ -72,10 +72,11 @@ typedef struct model_var{
 
     model_var_ops;
     struct model_var* inputs[MODEL_VAR_MAX_INPUTS];
-} mode_var;
+} model_var;
 
 typedef struct {
-
+    model_var** vars;
+    u32 size;
 } model_program;
 
 typedef struct {
@@ -85,6 +86,9 @@ typedef struct {
     matrix* output;
     matrix* desired_output;
     matrix* cost;
+
+    model_program forward_prog;
+    model_program cost_prog; 
 } model_context;
 
 
