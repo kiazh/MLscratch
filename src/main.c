@@ -33,6 +33,61 @@ b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q);
 b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out, const matrix *labels);
 b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
 
+typedef enum {
+    MY_FLAG_NONE = 0,
+
+    MY_FLAG_REQUIRES_GRAD = (1 << 0),
+    MY_FLAG_PARAMETER = (1 << 1),
+    MY_FLAG_INPUT = (1 << 2),
+    MY_FLAG_OUTPUT = (1 << 3),
+    MY_FLAG_DESIRED_OUTPUT = (1 << 4),
+    MY_FLAG_DESIRED_COST = (1 << 5),
+} model_var_flags;
+
+typedef enum {
+    MV_OP_NULL = 0,
+    MV_OP_CREATE,
+
+    _MV_OP_UNARY_START,
+
+    MV_OP_RELU,
+    MV__OP_SOFTMAX,
+
+    MV_OP_ADD,
+    MV_OP_SUB,
+    MV_OP_MATMUL,
+    MV_OP_CROSS_ENTROPY,
+}model_var_ops;
+
+#define MODEL_VAR_MAX_INPUTS 2
+#define MV_NUM_INPUTS(op) ((op) < _MV_OP_UNARY_START ? 0: ((op) < _MV_OP_BINARY_START ? 1 : 2))
+
+
+typedef struct model_var{
+    u32 index;
+    u32 flags;
+
+    matrix* val;
+    matrix* grad;
+
+    model_var_ops;
+    struct model_var* inputs[MODEL_VAR_MAX_INPUTS];
+} mode_var;
+
+typedef struct {
+
+} model_program;
+
+typedef struct {
+    u32 num_vars;
+
+    matrix* input;
+    matrix* output;
+    matrix* desired_output;
+    matrix* cost;
+} model_context;
+
+
 void draw_mnist_digit(f32* data);
 
 int main(void){
