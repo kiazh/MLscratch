@@ -34,14 +34,14 @@ b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out, const matrix *l
 b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
 
 typedef enum {
-    MY_FLAG_NONE = 0,
+    MV_FLAG_NONE = 0,
 
-    MY_FLAG_REQUIRES_GRAD = (1 << 0),
-    MY_FLAG_PARAMETER = (1 << 1),
-    MY_FLAG_INPUT = (1 << 2),
-    MY_FLAG_OUTPUT = (1 << 3),
-    MY_FLAG_DESIRED_OUTPUT = (1 << 4),
-    MY_FLAG_DESIRED_COST = (1 << 5),
+    MV_FLAG_REQUIRES_GRAD = (1 << 0),
+    MV_FLAG_PARAMETER = (1 << 1),
+    MV_FLAG_INPUT = (1 << 2),
+    MV_FLAG_OUTPUT = (1 << 3),
+    MV_FLAG_DESIRED_OUTPUT = (1 << 4),
+    MV_FLAG_DESIRED_COST = (1 << 5),
 } model_var_flags;
 
 typedef enum {
@@ -57,7 +57,7 @@ typedef enum {
     MV_OP_SUB,
     MV_OP_MATMUL,
     MV_OP_CROSS_ENTROPY,
-}model_var_ops;
+}model_var_op;
 
 #define MODEL_VAR_MAX_INPUTS 2
 #define MV_NUM_INPUTS(op) ((op) < _MV_OP_UNARY_START ? 0: ((op) < _MV_OP_BINARY_START ? 1 : 2))
@@ -70,7 +70,7 @@ typedef struct model_var{
     matrix* val;
     matrix* grad;
 
-    model_var_ops;
+    model_var_op op;
     struct model_var* inputs[MODEL_VAR_MAX_INPUTS];
 } model_var;
 
@@ -93,7 +93,7 @@ typedef struct {
 
 model_var* mv_create(
     mem_arena* arena, model_context* model, 
-    u32 rows, u32 cols, u32 flags
+    u32 rows, u32 cols, u32 flags, model_var_op op
 );
 model_var* mv_relu(
     mem_arena* arena, model_context* model, 
@@ -444,3 +444,90 @@ b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q){
     }
     return true;
 }
+
+model_var* mv_create(
+    mem_arena* arena, model_context* model, 
+    u32 rows, u32 cols, u32 flags, model_var_op op
+){
+    model_var* out = PUSH_STRUCT(arena, model_var);
+
+    out->index = model -> num_vars++;
+    out->flags = flags;
+    out-> op = op;
+    out->val = mat_create(arena,rows,cols);
+
+    if (flags & MV_FLAG_REQUIRES_GRAD) {
+        out->grad = mat_create(arena, rows, cols);
+    }
+
+    return out; 
+}
+
+model_var* _mv_unary_impl(
+    mem_arena* arena, model_context* model,
+    model_var* input, u32 rows, u32 cols,
+    u32 flags, model_var_op op
+){
+    if (flags & MV_FLAG_REQUIRES_GRAD) {
+        flags |= MV_FLAG_REQUIRES_GRAD;
+    }
+    model_var* out = mv_create(arena, model, rows, cols, flags, op);
+
+    out->inputs[0]= input;
+}
+
+
+model_var* mv_create(
+    mem_arena* arena, model_context* model, 
+    u32 rows, u32 cols, u32 flags, model_var_op op
+);
+model_var* mv_relu(
+    mem_arena* arena, model_context* model, 
+    model_var* input, u32* flags
+);
+model_var* mv_softmax(
+    mem_arena* arena, model_context* model, 
+    model_var* input, u32 flags
+);
+model_var* mv_add(
+    mem_arena* arena, model_context* model, 
+    model_var* a, model_var* b, u32 flags
+);
+model_var* mv_sub(
+    mem_arena* arena, model_context* model, 
+    model_var* a, model_var* b, u32 flags
+);
+model_var* mv_matmul(
+    mem_arena* arena, model_context* model, 
+    model_var* a, model_var* b, u32 flags
+);
+model_var* mv_cross_entropy(
+    mem_arena* arena, model_context* model, 
+    model_var* p, model_var* q, u32 flags
+);
+
+model_var* mv_relu(
+    mem_arena* arena, model_context* model, 
+    model_var* input, u32* flags
+);
+model_var* mv_softmax(
+    mem_arena* arena, model_context* model, 
+    model_var* input, u32 flags
+);
+model_var* mv_add(
+    mem_arena* arena, model_context* model, 
+    model_var* a, model_var* b, u32 flags
+);
+model_var* mv_sub(
+    mem_arena* arena, model_context* model, 
+    model_var* a, model_var* b, u32 flags
+);
+model_var* mv_matmul(
+    mem_arena* arena, model_context* model, 
+    model_var* a, model_var* b, u32 flags
+);
+model_var* mv_cross_entropy(
+    mem_arena* arena, model_context* model, 
+    model_var* p, model_var* q, u32 flags
+);
+
