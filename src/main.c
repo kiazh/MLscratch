@@ -9,7 +9,7 @@
 #include "arena.h"
 #include "psgrdn.h"
 #include "base.h"
-//test comment
+
 #define _CRT_SECURE_NO_WARNINGS
 
 typedef struct{
