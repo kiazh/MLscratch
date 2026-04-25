@@ -54,7 +54,7 @@ typedef enum {
     _MV_OP_UNARY_START,
 
     MV_OP_RELU,
-    MV__OP_SOFTMAX,
+    MV_OP_SOFTMAX, 
 
     MV_OP_ADD,
     MV_OP_SUB,
@@ -466,32 +466,54 @@ model_var* mv_create(
     return out; 
 }
 
-model_var* _mv_unary_impl(
-    mem_arena* arena, model_context* model,
-    model_var* input, u32 rows, u32 cols,
-    u32 flags, model_var_op op
-){
-    if (flags & MV_FLAG_REQUIRES_GRAD) {
+model_var *_mv_unary_impl(
+    mem_arena *arena, model_context *model,
+    model_var *input, u32 rows, u32 cols,
+    u32 flags, model_var_op op)
+{
+    if (flags & MV_FLAG_REQUIRES_GRAD)
+    {
         flags |= MV_FLAG_REQUIRES_GRAD;
     }
-    model_var* out = mv_create(arena, model, rows, cols, flags, op);
+    model_var *out = mv_create(arena, model, rows, cols, flags, op);
 
-    out->inputs[0]= input;
+    out->inputs[0] = input;
 }
 
+model_var *_mv_unary_impl(
+    mem_arena *arena, model_context *model,
+    model_var *a, model_var *b, u32 rows, u32 cols,
+    u32 flags, model_var_op op)
+{
+    if ((a->flags & MV_FLAG_REQUIRES_GRAD) || (b->flags & MV_FLAG_REQUIRES_GRAD))
+    {
+        flags |= MV_FLAG_REQUIRES_GRAD;
+    }
+    model_var *out = mv_create(arena, model, rows, cols, flags, op);
 
-model_var* mv_create(
-    mem_arena* arena, model_context* model, 
-    u32 rows, u32 cols, u32 flags, model_var_op op
-);
+    out->inputs[0] = a;
+    out->inputs[1] = b;
+}
+
 model_var* mv_relu(
     mem_arena* arena, model_context* model, 
     model_var* input, u32* flags
-);
+){
+    _mv_unary_impl(
+        arena, model, input, input->val->rows,
+        input->val->cols, flags, MV_OP_RELU
+    );
+}
+
 model_var* mv_softmax(
     mem_arena* arena, model_context* model, 
     model_var* input, u32 flags
-);
+){
+    mv_unary_impl(
+        arena, model, input, input->val->rows,
+        input->val->cols, flags, MV_OP_SOFTMAX
+    );
+}
 model_var* mv_add(
     mem_arena* arena, model_context* model, 
     model_var* a, model_var* b, u32 flags
