@@ -484,6 +484,7 @@ model_var *_mv_unary_impl(
 
     out->op = op; 
     out->inputs[0] = input;
+    return out; 
 }
 
 model_var* _mv_binary_impl(
@@ -500,6 +501,7 @@ model_var* _mv_binary_impl(
     out->op = op; 
     out->inputs[0] = a;
     out->inputs[1] = b;
+    return out; 
 }
 
 model_var* mv_relu(
