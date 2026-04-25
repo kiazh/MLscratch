@@ -568,8 +568,6 @@ model_var* mv_cross_entropy(
     if(p->val->rows != q->val->rows || p->val->cols != q->val->cols){
         return NULL;
     }
-
-
     return _mv_binary_impl (
         arena, model, p, q,
         p->val->rows, q->val->cols,
