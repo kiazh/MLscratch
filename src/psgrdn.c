@@ -1,14 +1,31 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include <sys/random.h>
+//#include <sys/random.h>
 #include "psgrdn.h"
+#include <windows.h>
+#include <bcrypt.h>
 
+/* 
 static int plat_get_entropy(void* buf, size_t len) {
     return getentropy(buf, len);
 }
 
-// Default state
+*/
+
+#pragma comment(lib, "bcrypt.lib")
+
+
+static int plat_get_entropy(void* buf, size_t len) {
+    NTSTATUS status = BCryptGenRandom(
+        NULL,                          /* hAlgorithm — NULL required with the flag below */
+        (PUCHAR)buf,
+        (ULONG)len,
+        BCRYPT_USE_SYSTEM_PREFERRED_RNG
+    );
+    return BCRYPT_SUCCESS(status) ? 0 : -1;
+}
+
 static prng_state s_prng_state = {
     0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL, NAN
 };
