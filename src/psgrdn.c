@@ -18,7 +18,7 @@ static int plat_get_entropy(void* buf, size_t len) {
 
 static int plat_get_entropy(void* buf, size_t len) {
     NTSTATUS status = BCryptGenRandom(
-        NULL,                          /* hAlgorithm — NULL required with the flag below */
+        NULL,                      
         (PUCHAR)buf,
         (ULONG)len,
         BCRYPT_USE_SYSTEM_PREFERRED_RNG

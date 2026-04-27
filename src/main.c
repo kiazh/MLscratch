@@ -94,6 +94,17 @@ typedef struct {
     model_program cost_prog; 
 } model_context;
 
+typedef struct {
+    matrix* train_images;
+    matrix* train_labels;
+    matrix* test_images;
+    matrix* test_labels; 
+
+    u32 epochs;
+    u32 batch_size;
+    f32 learning_rate;
+}model_training_desc;
+
 model_var* mv_create(
     mem_arena* arena, model_context* model, 
     u32 rows, u32 cols, u32 flags
@@ -121,6 +132,16 @@ model_var* mv_matmul(
 model_var* mv_cross_entropy(
     mem_arena* arena, model_context* model, 
     model_var* p, model_var* q, u32 flags
+);
+
+model_program model_prog_create(model_program* prog);
+void model_prog_computer_grads(model_program* prog);
+
+model_context* model_create(mem_arena* arena);
+void model_compile(mem_arena* arena, model_context* model);
+void model_feedforward(model_context* model); 
+void model_train(
+    model_context* model, const model_training_desc* training_desc
 );
 
 
