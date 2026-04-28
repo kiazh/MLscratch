@@ -596,3 +596,13 @@ model_var* mv_cross_entropy(
         flags, MV_OP_CROSS_ENTROPY
     );
 }
+
+
+model_program model_prog_create(mem_arena* arena, model_context* model, model_var* out_var){
+    
+} 
+
+
+
+void model_prog_computer(model_program* prog);
+void model_prog_compute_grads(model_program* prog);
