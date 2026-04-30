@@ -598,7 +598,11 @@ model_var* mv_cross_entropy(
 }
 
 
-model_program model_prog_create(mem_arena* arena, model_context* model, model_var* out_var){
+model_program model_prog_create(
+    mem_arena* arena, model_context* model, model_var* out_var
+){
+    mem_arena_temp scratch = arena_scratch_get(&arena, 1);
+     
     
 } 
 
