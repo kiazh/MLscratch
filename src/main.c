@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #include "arena.c"
 #include "psgrdn.c"
@@ -156,6 +157,8 @@ void create_mnist_model(mem_arena *arena, model_context *model);
 void draw_mnist_digit(f32* data);
 
 int main(void){
+    prng_seed((uint64_t)time(NULL), 0);
+
     mem_arena *perm_arena = arena_create(GiB(1), MiB(1));
 
     matrix* train_images = mat_load(perm_arena, 60000, 784, "data/train_images.npy");
