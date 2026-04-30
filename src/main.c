@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -10,8 +12,6 @@
 #include "arena.h"
 #include "psgrdn.h"
 #include "base.h"
-
-#define _CRT_SECURE_NO_WARNINGS
 
 typedef struct{
     uint32_t rows, cols;
@@ -35,6 +35,9 @@ b32 mat_softmax(matrix *out, const matrix *in);
 b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q);
 b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out, const matrix *labels);
 b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
+void mat_relu_add_grad(matrix *out, const matrix *val, const matrix *grad);
+void mat_cross_entropy_add_grad(matrix *p_grad, matrix *q_grad, const matrix *p, const matrix *q, const matrix *out_grad);
+u32 mat_argmax(const matrix *mat);
 
 typedef enum {
     MV_FLAG_NONE = 0,
@@ -112,8 +115,8 @@ model_var* mv_create(
     u32 rows, u32 cols, u32 flags
 );
 model_var* mv_relu(
-    mem_arena* arena, model_context* model, 
-    model_var* input, u32* flags
+    mem_arena* arena, model_context* model,
+    model_var* input, u32 flags
 );
 model_var* mv_softmax(
     mem_arena* arena, model_context* model, 
@@ -137,7 +140,7 @@ model_var* mv_cross_entropy(
 );
 
 model_program model_prog_create(mem_arena* arena, model_context* model, model_var* out_var); 
-void model_prog_computer(model_program* prog);
+void model_prog_compute(model_program* prog);
 void model_prog_compute_grads(model_program* prog);
 
 model_context* model_create (mem_arena* arena);
@@ -484,6 +487,38 @@ b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q){
     return true;
 }
 
+void mat_relu_add_grad(matrix *out, const matrix *val, const matrix *grad){
+    u64 size = (u64)out->rows * out->cols;
+    for (u64 i = 0; i < size; i++){
+        out->data[i] += val->data[i] > 0.0f ? grad->data[i] : 0.0f;
+    }
+}
+
+void mat_cross_entropy_add_grad(
+    matrix *p_grad, matrix *q_grad,
+    const matrix *p, const matrix *q, const matrix *out_grad
+){
+    u64 size = (u64)p->rows * p->cols;
+    for (u64 i = 0; i < size; i++){
+        f32 scale = out_grad->data[i];
+        if (p_grad != NULL){
+            p_grad->data[i] += scale * -logf(q->data[i] + 1e-7f);
+        }
+        if (q_grad != NULL){
+            q_grad->data[i] += scale * -p->data[i] / (q->data[i] + 1e-7f);
+        }
+    }
+}
+
+u32 mat_argmax(const matrix *mat){
+    u64 size = (u64)mat->rows * mat->cols;
+    u32 best = 0;
+    for (u64 i = 1; i < size; i++){
+        if (mat->data[i] > mat->data[best]) best = (u32)i;
+    }
+    return best;
+}
+
 model_var* mv_create(
     mem_arena* arena, model_context* model, 
     u32 rows, u32 cols, u32 flags
@@ -512,7 +547,7 @@ model_var *_mv_unary_impl(
     model_var *input, u32 rows, u32 cols,
     u32 flags, model_var_op op)
 {
-    if (flags & MV_FLAG_REQUIRES_GRAD)
+    if (input->flags & MV_FLAG_REQUIRES_GRAD)
     {
         flags |= MV_FLAG_REQUIRES_GRAD;
     }
@@ -541,8 +576,8 @@ model_var* _mv_binary_impl(
 }
 
 model_var* mv_relu(
-    mem_arena* arena, model_context* model, 
-    model_var* input, u32* flags
+    mem_arena* arena, model_context* model,
+    model_var* input, u32 flags
 ){
     return _mv_unary_impl(
         arena, model, input, input->val->rows,
@@ -554,7 +589,7 @@ model_var* mv_softmax(
     mem_arena* arena, model_context* model, 
     model_var* input, u32 flags
 ){
-    return mv_unary_impl(
+    return _mv_unary_impl(
         arena, model, input, input->val->rows,
         input->val->cols, flags, MV_OP_SOFTMAX
     );
@@ -578,27 +613,37 @@ model_var* mv_add(
 }
 
 model_var* mv_sub(
-    mem_arena* arena, model_context* model, 
+    mem_arena* arena, model_context* model,
+    model_var* a, model_var* b, u32 flags
+){
+    if(a->val->rows != b->val->rows || a->val->cols != b->val->cols){
+        return NULL;
+    }
+
+    return _mv_binary_impl(
+        arena, model, a, b,
+        a->val->rows, a->val->cols,
+        flags, MV_OP_SUB
+    );
+}
+
+model_var* mv_matmul(
+    mem_arena* arena, model_context* model,
     model_var* a, model_var* b, u32 flags
 ){
     if(a->val->cols != b->val->rows){
         return NULL;
     }
 
-
-    return _mv_binary_impl (
+    return _mv_binary_impl(
         arena, model, a, b,
         a->val->rows, b->val->cols,
         flags, MV_OP_MATMUL
     );
 }
 
-model_var* mv_matmul(
-    mem_arena* arena, model_context* model, 
-    model_var* a, model_var* b, u32 flags
-);
 model_var* mv_cross_entropy(
-    mem_arena* arena, model_context* model, 
+    mem_arena* arena, model_context* model,
     model_var* p, model_var* q, u32 flags
 ){
     if(p->val->rows != q->val->rows || p->val->cols != q->val->cols){
@@ -702,7 +747,7 @@ void model_prog_compute(model_program* prog) {
                 mat_mul(cur->val, a->val, b->val, 1, 0, 0); 
             } break;
             case MV_OP_CROSS_ENTROPY: {
-                mat_cross_entropy(cur->val, a->val, b->val);
+                mat_cross_entropy_loss(cur->val, a->val, b->val);
             } break;
         }
     }

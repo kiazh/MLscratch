@@ -1,7 +1,6 @@
 .vscode/
 *.dSYM/
 .venv/
-data/
 build/
 src/main
 src/psgrdn
