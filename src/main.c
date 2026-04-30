@@ -38,6 +38,7 @@ b32 mat_cross_entropy_loss_grad(matrix *out, const matrix *p, const matrix *q);
 void mat_relu_add_grad(matrix *out, const matrix *val, const matrix *grad);
 void mat_cross_entropy_add_grad(matrix *p_grad, matrix *q_grad, const matrix *p, const matrix *q, const matrix *out_grad);
 u32 mat_argmax(const matrix *mat);
+void mat_fill_rand(matrix *mat, f32 lower, f32 upper);
 
 typedef enum {
     MV_FLAG_NONE = 0,
@@ -145,10 +146,11 @@ void model_prog_compute_grads(model_program* prog);
 
 model_context* model_create (mem_arena* arena);
 void model_compile(mem_arena* arena, model_context* model);
-void model_feedforward(model_context* model); 
+void model_feedforward(model_context* model);
 void model_train(
     model_context* model, const model_training_desc* training_desc
 );
+void create_mnist_model(mem_arena *arena, model_context *model);
 
 
 void draw_mnist_digit(f32* data);
@@ -156,29 +158,61 @@ void draw_mnist_digit(f32* data);
 int main(void){
     mem_arena *perm_arena = arena_create(GiB(1), MiB(1));
 
-    matrix* train_images  = mat_load(perm_arena, 60000, 784, "data/train_images.npy");
-    matrix* test_images   = mat_load(perm_arena, 10000, 784, "data/test_images.npy");
+    matrix* train_images = mat_load(perm_arena, 60000, 784, "data/train_images.npy");
+    matrix* test_images  = mat_load(perm_arena, 10000, 784, "data/test_images.npy");
     matrix* train_labels = mat_create(perm_arena, 60000, 10);
-    matrix* test_labels = mat_create(perm_arena, 10000, 10);
+    matrix* test_labels  = mat_create(perm_arena, 10000, 10);
     {
         matrix* train_labels_file = mat_load(perm_arena, 60000, 1, "data/train_labels.npy");
-        matrix* test_labels_file = mat_load(perm_arena, 10000, 1, "data/test_labels.npy");
+        matrix* test_labels_file  = mat_load(perm_arena, 10000, 1, "data/test_labels.npy");
 
         for (u32 i = 0; i < 60000; i++){
-            u32 num = train_labels_file->data[i];
+            u32 num = (u32)train_labels_file->data[i];
             train_labels->data[i * 10 + num] = 1.0f;
         }
         for (u32 i = 0; i < 10000; i++){
             u32 num = (u32)test_labels_file->data[i];
             test_labels->data[i * 10 + num] = 1.0f;
         }
-
-         draw_mnist_digit(train_images->data);
-         for (u32 i = 0; i < 10; i++){
-            printf("%.0f ", train_labels->data[i]);
-         }
-         printf("\n");
     }
+
+    draw_mnist_digit(test_images->data);
+    for (u32 i = 0; i < 10; i++){
+        printf("%.0f ", test_labels->data[i]);
+    }
+    printf("\n\n");
+
+    model_context* model = model_create(perm_arena);
+    create_mnist_model(perm_arena, model);
+    model_compile(perm_arena, model);
+
+    memcpy(model->input->val->data, test_images->data, sizeof(f32) * 784);
+    model_feedforward(model);
+
+    printf("pre-training output: ");
+    for (u32 i = 0; i < 10; i++){
+        printf("%.2f ", model->output->val->data[i]);
+    }
+    printf("\n");
+
+    model_training_desc training_desc = {
+        .train_images  = train_images,
+        .train_labels  = train_labels,
+        .test_images   = test_images,
+        .test_labels   = test_labels,
+        .epochs        = 3,
+        .batch_size    = 50,
+        .learning_rate = 0.01f,
+    };
+    model_train(model, &training_desc);
+
+    memcpy(model->input->val->data, test_images->data, sizeof(f32) * 784);
+    model_feedforward(model);
+    printf("post-training output: ");
+    for (u32 i = 0; i < 10; i++){
+        printf("%.2f ", model->output->val->data[i]);
+    }
+    printf("\n\n");
 
     arena_destroy(perm_arena);
 
@@ -405,26 +439,15 @@ b32 mat_softmax(matrix *out, const matrix *in){
         return false;
     }
 
-    for (u32 r = 0; r < in->rows; r++){
-        f32 *in_row  = in->data  + r * in->cols;
-        f32 *out_row = out->data + r * out->cols;
+    u64 size = (u64)out->rows * out->cols;
 
-        f32 max_val = in_row[0];
-        for (u32 c = 1; c < in->cols; c++){
-            if (in_row[c] > max_val) max_val = in_row[c];
-        }
-
-        f32 sum = 0.0f;
-        for (u32 c = 0; c < in->cols; c++){
-            out_row[c] = expf(in_row[c] - max_val);
-            sum += out_row[c];
-        }
-
-        f32 inv_sum = 1.0f / sum;
-        for (u32 c = 0; c < out->cols; c++){
-            out_row[c] *= inv_sum;
-        }
+    f32 sum = 0.0f;
+    for (u64 i = 0; i < size; i++){
+        out->data[i] = expf(in->data[i]);
+        sum += out->data[i];
     }
+
+    mat_scale(out, 1.0f / sum);
 
     return true;
 }
@@ -996,4 +1019,46 @@ void model_train(
     }
 
     arena_scratch_release(scratch);
+}
+
+void mat_fill_rand(matrix *mat, f32 lower, f32 upper) {
+    u64 size = (u64)mat->rows * mat->cols;
+    for (u64 i = 0; i < size; i++) {
+        mat->data[i] = prng_randf() * (upper - lower) + lower;
+    }
+}
+
+void create_mnist_model(mem_arena *arena, model_context *model) {
+    model_var* input = mv_create(arena, model, 784, 1, MV_FLAG_INPUT);
+
+    model_var* W0 = mv_create(arena, model, 16, 784, MV_FLAG_REQUIRES_GRAD | MV_FLAG_PARAMETER);
+    model_var* W1 = mv_create(arena, model, 16, 16,  MV_FLAG_REQUIRES_GRAD | MV_FLAG_PARAMETER);
+    model_var* W2 = mv_create(arena, model, 10, 16,  MV_FLAG_REQUIRES_GRAD | MV_FLAG_PARAMETER);
+
+    f32 bound0 = sqrtf(6.0f / (784 + 16));
+    f32 bound1 = sqrtf(6.0f / (16 + 16));
+    f32 bound2 = sqrtf(6.0f / (16 + 10));
+    mat_fill_rand(W0->val, -bound0, bound0);
+    mat_fill_rand(W1->val, -bound1, bound1);
+    mat_fill_rand(W2->val, -bound2, bound2);
+
+    model_var* b0 = mv_create(arena, model, 16, 1, MV_FLAG_REQUIRES_GRAD | MV_FLAG_PARAMETER);
+    model_var* b1 = mv_create(arena, model, 16, 1, MV_FLAG_REQUIRES_GRAD | MV_FLAG_PARAMETER);
+    model_var* b2 = mv_create(arena, model, 10, 1, MV_FLAG_REQUIRES_GRAD | MV_FLAG_PARAMETER);
+
+    model_var* z0_a = mv_matmul(arena, model, W0, input, 0);
+    model_var* z0_b = mv_add(arena, model, z0_a, b0, 0);
+    model_var* a0   = mv_relu(arena, model, z0_b, 0);
+
+    model_var* z1_a = mv_matmul(arena, model, W1, a0, 0);
+    model_var* z1_b = mv_add(arena, model, z1_a, b1, 0);
+    model_var* z1_c = mv_relu(arena, model, z1_b, 0);
+    model_var* a1   = mv_add(arena, model, a0, z1_c, 0);
+
+    model_var* z2_a  = mv_matmul(arena, model, W2, a1, 0);
+    model_var* z2_b  = mv_add(arena, model, z2_a, b2, 0);
+    model_var* output = mv_softmax(arena, model, z2_b, MV_FLAG_OUTPUT);
+
+    model_var* y    = mv_create(arena, model, 10, 1, MV_FLAG_DESIRED_OUTPUT);
+    mv_cross_entropy(arena, model, y, output, MV_FLAG_COST);
 }
