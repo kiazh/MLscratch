@@ -74,6 +74,55 @@ void arena_clear(mem_arena* arena) {
     arena_pop_to(arena, ARENA_BASE_POS);
 }
 
+mem_arena_temp arena_temp_begin(mem_arena* arena) {
+    return (mem_arena_temp) {
+        .arena = arena,
+        .start_pos = arena->pos
+    };
+}
+
+void arena_temp_end(mem_arena_temp temp) {
+    arena_pop_to(temp.arena, temp.start_pos);
+}
+
+static _Thread_local mem_arena* _scratch_arenas[2] = { NULL, NULL };
+
+mem_arena_temp arena_scratch_get(mem_arena** conflicts, uint32_t num_conflicts) {
+    int32_t scratch_index = -1;
+
+    for (int32_t i = 0; i < 2; i++) {
+        int32_t conflict_found = 0;
+
+        for (uint32_t j = 0; j < num_conflicts; j++) {
+            if (_scratch_arenas[i] == conflicts[j]) {
+                conflict_found = 1;
+                break;
+            }
+        }
+
+        if (!conflict_found) {
+            scratch_index = i;
+            break;
+        }
+    }
+
+    if (scratch_index == -1) {
+        return (mem_arena_temp){ 0 };
+    }
+
+    mem_arena** selected = &_scratch_arenas[scratch_index];
+
+    if (*selected == NULL) {
+        *selected = arena_create(MiB(64), MiB(1));
+    }
+
+    return arena_temp_begin(*selected);
+}
+
+void arena_scratch_release(mem_arena_temp scratch) {
+    arena_temp_end(scratch);
+}
+
 #if defined(_WIN32)
 
 #include <windows.h>
