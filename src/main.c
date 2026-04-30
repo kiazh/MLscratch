@@ -444,17 +444,29 @@ b32 mat_cross_entropy_loss(matrix *out, const matrix *p, const matrix *q){
 
 }
 
-b32 mat_softmax_add_grad(matrix *out, const matrix *softmax_out, const matrix *labels){
-    if (out->rows != softmax_out->rows || out->cols != softmax_out->cols){
+b32 mat_softmax_add_grad(
+    matrix* out, const matrix* softmax_out, const matrix* grad
+) {
+    if (softmax_out->rows != 1 && softmax_out->cols != 1) {
         return false;
     }
-    if (labels->rows != softmax_out->rows || labels->cols != softmax_out->cols){
-        return false;
+
+    mem_arena_temp scratch = arena_scratch_get(NULL, 0);
+
+    u32 size = MAX(softmax_out->rows, softmax_out->cols);
+    matrix* jacobian = mat_create(scratch.arena, size, size);
+
+    for (u32 i = 0; i < size; i++) {
+        for (u32 j = 0; j < size; j++) {
+            jacobian->data[j + i * size] =
+                softmax_out->data[i] * ((i == j) - softmax_out->data[j]);
+        }
     }
-    u64 size = (u64)out->rows * out->cols;
-    for (u64 i = 0; i < size; i++){
-        out->data[i] += softmax_out->data[i] - labels->data[i];
-    }
+
+    mat_mul(out, jacobian, grad, 0, 0, 0);
+
+    arena_scratch_release(scratch);
+
     return true;
 }
 
