@@ -1,30 +1,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-//#include <sys/random.h>
 #include "psgrdn.h"
+
+#if defined(_WIN32)
+
 #include <windows.h>
 #include <bcrypt.h>
-
-/* 
-static int plat_get_entropy(void* buf, size_t len) {
-    return getentropy(buf, len);
-}
-
-*/
-
 #pragma comment(lib, "bcrypt.lib")
-
 
 static int plat_get_entropy(void* buf, size_t len) {
     NTSTATUS status = BCryptGenRandom(
-        NULL,                      
+        NULL,
         (PUCHAR)buf,
         (ULONG)len,
         BCRYPT_USE_SYSTEM_PREFERRED_RNG
     );
     return BCRYPT_SUCCESS(status) ? 0 : -1;
 }
+
+#elif defined(__APPLE__) || defined(__linux__)
+
+#include <sys/random.h>
+
+static int plat_get_entropy(void* buf, size_t len) {
+    return getentropy(buf, len);
+}
+
+#endif
 
 static prng_state s_prng_state = {
     0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL, NAN
