@@ -35,7 +35,7 @@ gcc src\main.c -o src\main.exe -lm -lbcrypt && src\main.exe
 - C compiler (gcc / clang / MinGW)
 - Git LFS (for data files)
 
-## Resources Used: 
+## Resources Used
 
 [3Blue1Brown Series](https://www.youtube.com/watch?v=aircAruvnKk&list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi&index=2)
 
